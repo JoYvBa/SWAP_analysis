@@ -31,7 +31,7 @@ redox_nodes = tools.node_dictionary["CW2_80cm"]
 # The nodes you want to plot for the temperature plot
 temp_nodes  = ['CW1S1', 'CW1S2', 'CW1S3', 'CW1S4', 'CW2S1', 'CW2S2', 'CW2S3', 'CW2S4', 'CW3S1', 'CW3S2', 'CW3S3']
 # The start and end date of the data you want to plot, as 'YYYY-MM-DD hh-mm-ss'. Hour, minute and second specification is optional
-start_date, end_date  = '2024-09-01', '2025-03-04'
+start_date, end_date = '2024-06-01', '2025-03-04'
 
 # Plots the redox data
 fig, ax = tools.plot_redox(df_redox,

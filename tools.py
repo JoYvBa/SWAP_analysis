@@ -9,6 +9,7 @@ import pandas as pd
 pd.options.mode.chained_assignment = None
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import numpy as np
 
 def cleanup_redox(file_path : str,
                   correction : float = 200,
@@ -74,6 +75,12 @@ def cleanup_redox(file_path : str,
     df_redox = df_redox.apply(pd.to_numeric, errors='coerce')
     df_temp = df_temp.set_index("Time")
     df_temp = df_temp.apply(pd.to_numeric, errors='coerce')
+    
+    date_range_redox = pd.date_range(df_redox.index[0], df_redox.index[-1], freq = "h")
+    date_range_temp = pd.date_range(df_temp.index[0], df_temp.index[-1], freq = "h")
+    
+    df_redox = df_redox.reindex(date_range_redox, fill_value=np.nan)
+    df_temp = df_temp.reindex(date_range_temp, fill_value=np.nan)
 
     return(df_redox, df_temp)
 

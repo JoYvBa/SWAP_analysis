@@ -35,6 +35,7 @@ def cleanup_redox(file_path : str,
         A cleaned up dataframe containing the soil temperature data from the input Excel sheet.
     """
     
+    # Handle both Excel files and .csv (or .dat) files as input
     if file_path.endswith("xlsx") or file_path.endswith("xls"):
         dataframe = pd.read_excel(file_path, sheet_name = 0)
     else:
@@ -45,8 +46,10 @@ def cleanup_redox(file_path : str,
     
     drop_cols = ['batt_volt_Avg', 'RECORD', 'TIMESTAMP']
     
+    # Locate the row containing sensor names and change column headers
     header = dataframe[dataframe.iloc[:,0] == "TIMESTAMP"].index[0]
     dataframe.columns = dataframe.iloc[header]
+    # Locate the row where redox data starts, to remove any unnecessary rows above
     start_data = dataframe[dataframe.loc[:,"RECORD"] == "0"].index[0]
     dataframe = dataframe.drop(range(0,start_data))
     
@@ -54,6 +57,7 @@ def cleanup_redox(file_path : str,
     dataframe['Time'] = pd.to_datetime(dataframe['TIMESTAMP'])
     move_col = dataframe.pop("Time")
     dataframe.insert(0, "Time", move_col)
+    # Remove irrelevant columns
     dataframe = dataframe.drop(drop_cols, axis = 1)
     
     # Split dataframe into redox and temperature by selecting on the beginning of the column names.
@@ -63,22 +67,23 @@ def cleanup_redox(file_path : str,
     df_temp = pd.concat([dataframe['Time'], df_temp], axis = 1)
     
     # Column names are changed to more concise names for ease of understanding.
+    # Renaming dictionaries are located at the bottom of this script and can be passed to this function.
     if rename:
         df_redox.rename(columns = rename, inplace = True)
         df_temp.rename(columns = rename, inplace = True)
     
-    # For analysis, datatype has to be set to floats
-    df_redox.loc[:, df_redox.columns != 'Time'] = df_redox.loc[:, df_redox.columns != 'Time'].apply(pd.to_numeric, errors='coerce') + correction
-    df_temp.loc[:, df_temp.columns != 'Time'] = df_temp.loc[:, df_temp.columns != 'Time']. apply(pd.to_numeric, errors='coerce')
-    
+    # Set dataframe index to the date-time column for ease of indexing.
     df_redox = df_redox.set_index("Time")
-    df_redox = df_redox.apply(pd.to_numeric, errors='coerce')
     df_temp = df_temp.set_index("Time")
+    # Set datatype to numerical for plotting and data analysis.
+    df_redox = df_redox.apply(pd.to_numeric, errors='coerce') + correction
     df_temp = df_temp.apply(pd.to_numeric, errors='coerce')
     
+    # Hourly data range from beginning to end date of dataframe, to include missing timeframe.
     date_range_redox = pd.date_range(df_redox.index[0], df_redox.index[-1], freq = "h")
     date_range_temp = pd.date_range(df_temp.index[0], df_temp.index[-1], freq = "h")
     
+    # Fill any missing time with NaN values, to clarify which parts of data are missing.
     df_redox = df_redox.reindex(date_range_redox, fill_value=np.nan)
     df_temp = df_temp.reindex(date_range_temp, fill_value=np.nan)
 
@@ -88,7 +93,8 @@ def plot_redox(df_redox : pd.DataFrame(),
                redox_nodes : list,
                start_date : str,
                end_date : str,
-               ylimit : tuple = None,  
+               ylimit : tuple = None,
+               ax = None,
                **kwargs
                ):
     """ Plot redox potential and optionally rainfall data for selected nodes in a timeframe.
@@ -106,6 +112,8 @@ def plot_redox(df_redox : pd.DataFrame(),
         The end date of the data to be plotted, as "YYYY-MM-DD"
     ylimit_redox : tuple, optional
         Manually set y-axis range for the redox data, as (min_y, max_y). The default is None.
+    ax : obj, optional
+        Axes object of matplotlib, specify when adding this to a pre-exisiting plot object. Default is None.
     **kwargs :
         Keyword arguments for plt.plot()
 
@@ -117,11 +125,17 @@ def plot_redox(df_redox : pd.DataFrame(),
         Axes object of matplotlib
     """
     
+    # Select date range of data
     mask = (df_redox.index > start_date) & (df_redox.index <= end_date)
     df_redox_plot = df_redox[mask]
-
-    fig, ax = plt.subplots(figsize=(8, 6), dpi=300)
-
+    
+    # Detect if an axis object is passed to the function, so data will be plotted to the right axis.
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 6), dpi=300)
+    else:
+        fig = None
+    
+    # Plot redox potential measured for every input node
     for i, node in enumerate(redox_nodes):
         ax.plot(df_redox_plot.index, df_redox_plot[node],
                 label = node,
@@ -130,6 +144,7 @@ def plot_redox(df_redox : pd.DataFrame(),
     ax.set_xlabel("Time")
     ax.set_ylabel("Redox potential [mV]")
     
+    # try-except structure to handle ylimits of wrong format
     if ylimit:
         try:
             ax.set_ylim(ylimit)
@@ -148,9 +163,15 @@ def plot_redox(df_redox : pd.DataFrame(),
     ax.xaxis.set_minor_formatter(mdates.DateFormatter('%d'))
     ax.tick_params(axis='x', which='minor', length=4, width=1)
     
-    fig.tight_layout()
+    # When part of pre-exisiting figure, only ax needs to be returned, otherwise, fig is generated inside this function so it has to be returned as well.
+    if fig is None:
+        return(ax)
+    else:
+        fig.tight_layout() 
+        return(fig, ax)
     
     return(fig, ax)
+
 
 def plot_temp(df_temp : pd.DataFrame(),
               temp_nodes : list,
@@ -191,30 +212,36 @@ def plot_temp(df_temp : pd.DataFrame(),
         Axes object of matplotlib
 
     """
+    
+    # Select date range of data
     mask = (df_temp.index > start_date) & (df_temp.index <= end_date)
     df_temp = df_temp[mask]
+    
+    # When plotting temperature and redox together, it is more clear to use the mean temperature.
     if mean:
         mean_temp = df_temp.loc[:,temp_nodes].mean(axis=1)
         df_temp['mean_temperature'] = mean_temp
     
+    # Detect if an axis object is passed to the function, so data will be plotted to the right axis.
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 6), dpi=300)
     else:
         fig = None
     
+    # Plotting parameters are different when plotting the mean temperature versus every temperature node.
     if mean:
             ax.plot(df_temp.index, df_temp["mean_temperature"],
                     label = "Mean temperature",
                     **kwargs
                     )
-
     else:
         for i, node in enumerate(temp_nodes):
             ax.plot(df_temp.index, df_temp[node],
                     label = node,
                     **kwargs
                     )
-
+    
+    # try-except structure to handle ylimits of wrong format
     if ylimit:
         try:
             ax.set_ylim(ylimit)
@@ -233,6 +260,7 @@ def plot_temp(df_temp : pd.DataFrame(),
     ax.xaxis.set_minor_formatter(mdates.DateFormatter('%d'))
     ax.tick_params(axis='x', which='minor', length=4, width=1)
     
+    # When part of pre-exisiting figure, only ax needs to be returned, otherwise, fig is generated inside this function so it has to be returned as well.
     if fig is None:
         return(ax)
     else:

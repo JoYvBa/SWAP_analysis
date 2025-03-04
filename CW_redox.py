@@ -24,9 +24,11 @@ df_redox, df_temp = tools.cleanup_redox(file_path,
 
 #%%
 # The nodes you want to plot for the redox plot using node_dictionary
-redox_nodes = tools.node_dictionary["CW2_80cm"]
+redox_nodes = tools.node_dictionary["CW3_80cm"]
 # Or alternatively by manually choosing the redox nodes
-#redox_nodes = ["CW3S1-4", "CW3S2-4", "CW3S3-4", "CW3S4-4"]
+# Naming as: CW# = which wetland, S# = which position along the wetland, -# = which depth
+# Options: CW1, CW2, CW3 | S1, S2, S3, S4 | -1 (20cm), -2 (40cm), -3 (60cm), -4 (80cm)
+redox_nodes = ["CW3S1-4", "CW3S2-4", "CW3S3-4", "CW3S4-4"]
 
 # The nodes you want to plot for the temperature plot
 temp_nodes  = ['CW1S1', 'CW1S2', 'CW1S3', 'CW1S4', 'CW2S1', 'CW2S2', 'CW2S3', 'CW2S4', 'CW3S1', 'CW3S2', 'CW3S3']
